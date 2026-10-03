@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NanoAnalytics Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .metric {
+            display: inline-block;
+            background: #f8f9fa;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 NanoAnalytics End-to-End Tracking Test</h1>
+        <p>This page tests the full tracking flow: beacon script → API → dashboard</p>
+        
+        <div class="info">
+            <strong>Configuration:</strong> Tracking <code>test-site.example.com</code> with token <code>test-token-123</code>
+        </div>
+
+        <div class="test-section">
+            <h3>1. Automatic Page View Tracking</h3>
+            <p>This page loads <code>/a.js</code> which should send a page view to <code>/hit</code>.</p>
+            <div class="metric">Page view sent: <span id="pv-status">pending...</span></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Custom Events (from PR #2)</h3>
+            <p>Test the Custom Events API by clicking buttons below:</p>
+            <button onclick="trackEvent('button_click', {button: 'cta', page: 'homepage'})">Track Button Click</button>
+            <button onclick="trackEvent('form_submit', {form: 'contact', fields: 5})">Track Form Submit</button>
+            <button onclick="trackEvent('purchase', {amount: 99.99, currency: 'USD', plan: 'pro'})">Track Purchase</button>
+            <button onclick="trackEvent('download', {file: 'whitepaper.pdf', size: '2.3MB'})">Track Download</button>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Navigation Simulation (SPA)</h3>
+            <p>Simulate SPA navigation with history.pushState:</p>
+            <button onclick="simulateNav('/about')">Navigate to /about</button>
+            <button onclick="simulateNav('/pricing')">Navigate to /pricing</button>
+            <button onclick="simulateNav('/contact')">Navigate to /contact</button>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Verification Links</h3>
+            <p>Check if data appeared in the dashboard:</p>
+            <a href="http://77.90.53.243:8000/dashboard" target="_blank" class="metric">📈 Open Dashboard</a>
+            <a href="http://77.90.53.243:8000/api/pageviews?site=test-site.example.com" target="_blank" class="metric">📊 API: Pageviews</a>
+            <a href="http://77.90.53.243:8000/api/events/names?site=test-site.example.com" target="_blank" class="metric">🎯 API: Event Names</a>
+            <a href="http://77.90.53.243:8000/api/events/stats?site=test-site.example.com" target="_blank" class="metric">📊 API: Event Stats</a>
+        </div>
+    </div>
+
+    <!-- NanoAnalytics Beacon Script -->
+    <script async src="http://77.90.53.243:8000/a.js" data-site="test-site.example.com"></script>
+
+    <script>
+        // Track page view status
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                document.getElementById('pv-status').textContent = '✅ beacon loaded';
+                document.getElementById('pv-status').style.color = '#155724';
+            }, 1000);
+        });
+
+        // Custom event tracking function
+        function trackEvent(name, props = {}) {
+            const payload = {
+                name: name,
+                props: props,
+                timestamp: Date.now()
+            };
+            
+            // Use sendBeacon for reliability
+            if (navigator.sendBeacon) {
+                const blob = new Blob([JSON.stringify(payload)], {type: 'application/json'});
+                navigator.sendBeacon('http://77.90.53.243:8000/event', blob);
+            } else {
+                fetch('http://77.90.53.243:8000/event', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload),
+                    keepalive: true
+                });
+            }
+            
+            // Visual feedback
+            const btn = event.target;
+            const original = btn.textContent;
+            btn.textContent = '✅ Sent';
+            btn.style.background = '#28a745';
+            setTimeout(() => {
+                btn.textContent = original;
+                btn.style.background = '#007bff';
+            }, 1500);
+        }
+
+        // Simulate SPA navigation
+        function simulateNav(path) {
+            window.history.pushState({}, '', path);
+            window.dispatchEvent(new Event('popstate'));
+            
+            // Also send a manual page view for this "new" page
+            if (window.nanoAnalytics && window.nanoAnalytics.trackPageView) {
+                window.nanoAnalytics.trackPageView();
+            }
+            
+            const btn = event.target;
+            const original = btn.textContent;
+            btn.textContent = '✅ Navigated';
+            btn.style.background = '#28a745';
+            setTimeout(() => {
+                btn.textContent = original;
+                btn.style.background = '#007bff';
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
