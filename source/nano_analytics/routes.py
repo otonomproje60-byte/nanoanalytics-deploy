@@ -253,6 +253,11 @@ def _where(site, start, end):
 
 # ── Public routes ──────────────────────────────────────────────────────────────
 
+@bp.route("/")
+def index():
+    return render_template("dashboard.html")
+
+
 @bp.route("/health")
 def health():
     return jsonify({"status": "ok"})

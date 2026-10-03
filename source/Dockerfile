@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir flask gunicorn geoip2fast
 COPY nano_analytics/ nano_analytics/
 COPY static/ static/
 COPY templates/ templates/
+COPY docs/ docs/
 COPY wsgi.py .
 COPY gunicorn.conf.py .
 
